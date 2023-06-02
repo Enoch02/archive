@@ -1,0 +1,3 @@
+{
+    "files": ["keypad_main.py","keypad_gui.ui","keypad_gui.ui.py"]
+}

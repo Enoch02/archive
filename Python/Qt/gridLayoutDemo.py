@@ -1,0 +1,132 @@
+# This Python file uses the following encoding: utf-8
+import sys, json
+from PyQt6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QLabel,
+    QLineEdit,
+    QCheckBox,
+    QTextEdit,
+    QGridLayout,
+)
+from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtGui import QFont
+
+
+class MainWindow(QWidget):
+    def __init__(self):
+        """Constructor for empty class"""
+        super().__init__()
+        self.initializeUI()
+
+    def initializeUI(self):
+        """Setup the application"""
+        self.setMinimumSize(500, 300)
+        self.setWindowTitle("QGridLayout Example")
+
+        self.setUpMainWindow()
+        self.loadWidgetValuesFromFile()
+        self.show()
+
+    def setUpMainWindow(self):
+        header_label = QLabel("Simple Daily Planner")
+        header_label.setFont(QFont("Arial", 20))
+        header_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # create widgets for the left side of the window
+        today_label = QLabel(". Today's Focus")
+        today_label.setFont(QFont("Arial", 14))
+
+        self.today_tedit = QTextEdit()
+
+        notes_label = QLabel(". Notes")
+        notes_label.setFont(QFont("Arial", 14))
+
+        self.notes_tedit = QTextEdit()
+
+        # organize the left side widgets into column 0 of the grid layout
+        self.main_grid = QGridLayout()
+        self.main_grid.addWidget(header_label, 0, 0)
+        self.main_grid.addWidget(today_label, 1, 0)
+        self.main_grid.addWidget(self.today_tedit, 2, 0, 3, 1)
+        self.main_grid.addWidget(notes_label, 5, 0)
+        self.main_grid.addWidget(self.notes_tedit, 6, 0, 3, 1)
+
+        # create widgets at the right side of the window
+        today = QDate.currentDate().toString(Qt.DateFormat.ISODate)
+        date_label = QLabel(today)
+        date_label.setFont(QFont("Arial", 18))
+        date_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+        todo_label = QLabel(". To Do")
+        today_label.setFont(QFont("Arial", 14))
+
+        # organize the right side widgets into columns 1 and 2 of the QGridLayout
+        self.main_grid.addWidget(date_label, 0, 2)
+        self.main_grid.addWidget(todo_label, 1, 1, 1, 2)
+
+        # create 7 rows, from indexes 2-8
+        for row in range(2, 9):
+            item_cb = QCheckBox()
+            item_edit = QLineEdit()
+
+            self.main_grid.addWidget(item_cb, row, 1)
+            self.main_grid.addWidget(item_edit, row, 2)
+
+        # set the layout for the main window
+        self.setLayout(self.main_grid)
+
+    def loadWidgetValuesFromFile(self):
+        """Retrieve previous values from the last session"""
+        try:
+            with open("details.txt", "r") as f:
+                details = json.load(f)
+
+                self.today_tedit.setText(details["focus"])
+                self.notes_tedit.setText(details["notes"])
+
+                for row in range(len(details["todo"])):
+                    # row + 2 because are QLineEdits are at row 2
+                    item = self.main_grid.itemAtPosition(row + 2, 2)
+                    widget: QLineEdit = item.widget()
+                    widget.setText(details["todo"][row])
+        except FileNotFoundError as error:
+            f = open("details.txt", "w")
+
+    def saveWidgetValues(self):
+        """Collect and save the widget values."""
+        details = {
+            "focus": self.today_tedit.toPlainText(),
+            "notes": self.notes_tedit.toPlainText(),
+        }
+        remaining_todo = []
+
+        # check the values of the QCheckBox widgets
+        for row in range(2, 9):
+            # retrieve the QLayoutItem object
+            item = self.main_grid.itemAtPosition(row, 1)
+            # retrieve the widget
+            widget: QCheckBox = item.widget()
+
+            if widget.isChecked() == False:
+                # get the text from QLineEdit widget
+                item = self.main_grid.itemAtPosition(row, 2)
+                widget: QLineEdit = item.widget()
+                text = widget.text()
+
+                if text != "":
+                    remaining_todo.append(text)
+            details["todo"] = remaining_todo
+
+        with open("details.txt", "w") as f:
+            f.write(json.dumps(details))
+
+    def closeEvent(self, event):
+        "Save widget values when closing the window."
+        self.saveWidgetValues()
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    sys.exit(app.exec())
